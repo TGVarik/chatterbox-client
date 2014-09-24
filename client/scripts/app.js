@@ -31,6 +31,7 @@ var app = {
       app.fetch();
     });
 
+    //sends message on button click based on current room selection
     $('.send').on('click', function(e) {
       e.preventDefault();
       var room = $('.room-selector').val();
@@ -43,14 +44,26 @@ var app = {
         message.roomname = room;
 
       app.send(message);
+      //wait for a period so message will fetch
       setTimeout(function(){app.fetch()}, 1000);
       $('input').val("");
     });
 
+    //select a new room using the dropdown menu
     $('.room-selector').on('change', function(e){
       e.preventDefault();
       app.fetch();
+      $('input.newroom').val("")
     })
+
+    //add a new room via the input field and button
+    $('button.newroom').on('click', function(e) {
+      e.preventDefault();
+      app.createRoom($('input.newroom').val());
+    })
+
+    //automatic refreshing every 5 seconds
+    setInterval(function() {app.fetch();}, 5000);
   },
 
   send: function(data){
@@ -107,9 +120,9 @@ var app = {
       var cleaned = {};
       // start with dirty text, e.g., message.text
       cleaned.text = message.text;
-      cleaned.roomname = message.roomname;
-      cleaned.username = message.username;
-      cleaned.createdAt = message.createdAt;
+      cleaned.roomname = _.escape(message.roomname);
+      cleaned.username = _.escape(message.username);
+      cleaned.createdAt = _.escape(message.createdAt);
       cleaned.objectId = message.objectId;
       cleaned.updatedAt = message.updatedAt;
       cleaned.friend = app.hasFriend(cleaned.username);
@@ -133,7 +146,7 @@ var app = {
       }
     }
 
-    app.updateRoomSelector(data);
+    app.updateRoomObject(data);
 
     app.svg.attr('height', data.length * app.messageHeight);
 
@@ -291,39 +304,69 @@ var app = {
     return app.friends;
   },
 
-  updateRoomSelector: function(data){
+  updateRoomObject: function(data){
+
+    //search through data for room names
     for (var i = 0; i < data.length; i++){
-      if (data[i].roomname !== undefined && $.trim(data[i].roomname) !== '')
+      if (data[i].roomname !== undefined && $.trim(data[i].roomname) !== '') {
+      //set rooms object to key (roomname), value true
       app.rooms[data[i].roomname] = true;
+      }
     }
+
+    app.updateRoomSelector();
+  },
+
+ updateRoomSelector: function() {
     var rooms = [];
-    for (var key in app.rooms){
+    for (var key in app.rooms) {
+      //add all the rooms into a rooms array
       rooms.push(key);
     }
+    //sort the array
     rooms = rooms.sort();
 
+    //dropdown bar
     var el = $('.room-selector');
+
+    //store values from old bar
     var oldValue = el.val();
+    //clear bar
     el.find('option')
       .remove()
       .end()
       .append('<option value="all">All Rooms</option>');
+
+    //iterate through rooms array
     for (i = 0; i < rooms.length; i++){
+      //add options to the bar
       el.append('<option value="' + rooms[i] + '">' + rooms[i] + '</option>')
     }
+
     if (rooms.indexOf(oldValue) >= 0){
       el.val(oldValue);
     } else {
       el.val('all');
+    }
+  },
+
+  createRoom: function(roomName) {
+    var inputChecker = /\w/g;
+    if(typeof roomName === 'string' && roomName.search(inputChecker) !== -1 && roomName !== 'Room Name') {
+      //manually add to object
+      app.rooms[roomName] = true;
+      //call updateRoomSelector()
+      app.updateRoomSelector();
+      //change option on bar to reflect room change using jQuery, re 324, 343
+      $('.room-selector').val(roomName);
+      //updates page to reflect new room name
+      app.fetch();
     }
   }
 
 
 
 };
-
-
-
 
 (function($){
   $.fn.scrollFixed = function(params){
